@@ -9,7 +9,25 @@ const RAIZ = path.join(__dirname, "..");
 const DB_PATH = process.env.DB_PATH || path.join(RAIZ, "data", "estudio.db");
 const MANIFIESTO = process.env.MANIFIESTO || path.join(RAIZ, "content", "materias.json");
 
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const DIR_DATOS = path.dirname(DB_PATH);
+fs.mkdirSync(DIR_DATOS, { recursive: true });
+
+/* Si el directorio no es escribible, mejor caerse aquí con un mensaje claro
+   que arrancar y perder cada resaltado al escribir. */
+try {
+  fs.accessSync(DIR_DATOS, fs.constants.W_OK);
+} catch (e) {
+  console.error(`El directorio de datos no es escribible: ${DIR_DATOS}`);
+  throw e;
+}
+
+/* Tras un redeploy este es el dato que dice si el volumen persistente está
+   montado: con volumen, la base ya existe; sin volumen, siempre es nueva. */
+const yaExistia = fs.existsSync(DB_PATH);
+console.log(
+  `Base de datos: ${DB_PATH} (${yaExistia ? "existente" : "nueva"})` +
+  (yaExistia ? "" : " — si esto aparece tras cada redeploy, falta el volumen en /app/data")
+);
 
 export const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");

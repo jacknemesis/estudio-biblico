@@ -48,6 +48,26 @@ a mano.
     public/materias/      un HTML autocontenido por materia
     Dockerfile            node:20-alpine
 
+## Persistencia
+
+La base SQLite vive en `DB_PATH` (`/app/data/estudio.db` en el contenedor).
+**Ese directorio tiene que ser un volumen persistente**: sin él, el contenedor
+se recrea desde cero en cada redeploy y los resaltados se pierden.
+
+- `docker-compose.yml` ya lo declara: volumen `estudio-datos` montado en
+  `/app/data`. Es la forma más segura de desplegar.
+- El `Dockerfile` declara `VOLUME ["/app/data"]`. Eso protege los reinicios del
+  contenedor, pero en un redeploy Docker crea un volumen anónimo nuevo: no
+  basta por sí solo, hay que montar un volumen con nombre.
+- En un PaaS sin compose, hay que añadir el volumen a mano en el panel
+  (almacenamiento persistente → montar en `/app/data`).
+
+Cómo comprobar que funciona: el arranque registra la línea
+
+    Base de datos: /app/data/estudio.db (existente|nueva)
+
+Si tras cada redeploy dice `nueva`, el volumen **no** está montado.
+
 ## Local
 
     npm install

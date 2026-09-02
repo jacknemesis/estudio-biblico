@@ -1,0 +1,23 @@
+# Despliegue con volumen persistente declarado en el propio repo.
+# Los datos (SQLite) viven en el volumen `estudio-datos` montado en /app/data,
+# así que sobreviven a redeploys y recreaciones del contenedor.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      DB_PATH: /app/data/estudio.db
+    volumes:
+      - estudio-datos:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 4s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  estudio-datos:
