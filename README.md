@@ -1,41 +1,83 @@
-# Estudio bíblico
+# Estudio bíblico · Berea
 
-Estudio bíblico interactivo (84 capítulos, navegación por burbujas, mapas SVG)
-con backend liviano para que los resaltados persistan en servidor y se
-sincronicen entre dispositivos.
+Materias de estudio bíblico de Berea, con backend liviano para que los
+resaltados persistan en servidor y se sincronicen entre dispositivos.
+
+La primera materia es **Vista panorámica del Antiguo Testamento**; el modelo
+está pensado para ir añadiendo más.
+
+## Modelo
+
+    escuela   Berea
+      materia   una asignatura ("Vista panorámica del Antiguo Testamento")
+        estudio   una unidad dentro de la materia (aquí, cada capítulo/clase)
+          contexto  la vista concreta dentro del estudio (panel, listado)
+
+Cada **materia** es un HTML de un solo archivo, autocontenido, en
+`public/materias/<id>.html`, declarado en `content/materias.json`. Los
+**estudios** viven dentro de ese HTML (aquí, los 84 capítulos agrupados por
+libro); la base de datos solo guarda su identificador, para poder colgar datos
+de ellos sin tener que trocear el contenido.
+
+Los resaltados se anclan a `(materia_id, estudio_id, contexto)`, así que dos
+materias pueden usar el mismo `contexto` sin pisarse.
+
+## Añadir una materia
+
+1. Dejá su HTML en `public/materias/<id>.html`.
+2. Agregá la entrada en `content/materias.json`:
+
+       { "id": "<id>", "titulo": "...", "resumen": "...",
+         "archivo": "materias/<id>.html", "orden": 2, "estado": "publicada" }
+
+3. Reiniciá. El manifiesto se sincroniza con la tabla `materias` al arrancar.
+
+`"estado"` distinto de `"publicada"` la oculta del portal y de la API: sirve
+para dejar una materia en preparación dentro del repo.
+
+Para que el HTML nuevo tenga resaltados sincronizados solo necesita el mismo
+bloque `Resaltados`: la materia se deduce de su propia ruta, no está escrita
+a mano.
 
 ## Estructura
 
-    server/index.js   Express: API REST + estáticos
-    server/db.js      SQLite (better-sqlite3), esquema y consultas
-    public/           estudio-biblico.html (la app, un solo archivo)
-    Dockerfile        node:20-alpine
+    server/index.js       Express: catálogo, API de resaltados, estáticos
+    server/db.js          SQLite (better-sqlite3), esquema y consultas
+    content/materias.json manifiesto del catálogo
+    public/index.html     portal con la lista de materias
+    public/materias/      un HTML autocontenido por materia
+    Dockerfile            node:20-alpine
 
 ## Local
 
     npm install
     npm start          # http://localhost:3000
 
-Variables: `PORT` (3000), `DB_PATH` (`./data/estudio.db`).
+Variables: `PORT` (3000), `DB_PATH` (`./data/estudio.db`),
+`MANIFIESTO` (`./content/materias.json`).
 
 ## API
 
 Identidad = `dispositivo_id`, un uuid anónimo generado en el cliente y guardado
 en `localStorage` (`estudio-biblico:dispositivo`). Sin login.
 
-    GET    /api/resaltados?dispositivo_id=...[&contexto=...]
-    POST   /api/resaltados          { dispositivo_id, texto, contexto }
+    GET    /api/materias
+    GET    /api/materias/:id
+    GET    /api/materias/:id/estudios
+    GET    /api/resaltados?dispositivo_id=...&materia_id=...[&contexto=...]
+    POST   /api/resaltados   { dispositivo_id, materia_id, texto, contexto, estudio_id? }
     DELETE /api/resaltados/:id?dispositivo_id=...
-    DELETE /api/resaltados?dispositivo_id=...&contexto=...&texto=...
+    DELETE /api/resaltados?dispositivo_id=...&materia_id=...&contexto=...&texto=...
     GET    /api/salud
 
-`contexto` es la vista: `"Gn 4|0"` (sigla|panel), `"libro:Génesis"` o
-`"cronologia"`. `POST` es idempotente: el mismo texto en el mismo contexto no
-se duplica y devuelve 200 con el resaltado existente.
+`POST` es idempotente: el mismo texto en el mismo contexto no se duplica y
+devuelve 200 con el resaltado existente. Un `materia_id` que no esté en el
+catálogo devuelve 404.
 
 ## Sincronización en el cliente
 
-El bloque `Resaltados` del HTML mantiene `localStorage` como caché y fallback:
+El bloque `Resaltados` del HTML mantiene `localStorage` como caché y fallback,
+con una clave por materia:
 
 - pinta al instante desde la caché y en paralelo hace `GET` del contexto actual;
 - si el servidor responde, manda él: se reconcilia la caché y se repintan las marcas;
@@ -50,5 +92,5 @@ DOM cuando hay `text-transform: uppercase` o saltos de línea y sangrías.
 ## Login más adelante
 
 La tabla `usuarios` y la columna `resaltados.usuario_id` ya existen (hoy en
-`NULL`). Añadir login por email es rellenar `usuario_id` y filtrar por él,
-sin migrar el esquema ni perder los resaltados anónimos existentes.
+`NULL`). Añadir login por email es rellenar `usuario_id` y filtrar por él, sin
+migrar el esquema ni perder los resaltados anónimos existentes.

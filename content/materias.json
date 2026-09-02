@@ -1,0 +1,13 @@
+{
+  "escuela": "Berea",
+  "materias": [
+    {
+      "id": "vista-panoramica-at",
+      "titulo": "Vista panorámica del Antiguo Testamento",
+      "resumen": "Recorrido por 84 capítulos clave del Antiguo Testamento, libro por libro, con panorama, contexto histórico y cronología.",
+      "archivo": "materias/vista-panoramica-at.html",
+      "orden": 1,
+      "estado": "publicada"
+    }
+  ]
+}
