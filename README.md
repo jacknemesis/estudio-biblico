@@ -43,6 +43,10 @@ El bloque `Resaltados` del HTML mantiene `localStorage` como caché y fallback:
 - los resaltados creados sin conexión quedan con `id: null` y se suben en la
   siguiente sincronización correcta.
 
+El texto se compara normalizado (minúsculas, espacios colapsados): la selección
+del navegador devuelve el texto ya renderizado, que puede no coincidir con el
+DOM cuando hay `text-transform: uppercase` o saltos de línea y sangrías.
+
 ## Login más adelante
 
 La tabla `usuarios` y la columna `resaltados.usuario_id` ya existen (hoy en

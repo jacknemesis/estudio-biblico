@@ -3628,6 +3628,37 @@ async function apiBorrar(item, contexto){
   if(!r.ok && r.status !== 404) throw new Error("DELETE " + r.status);
 }
 
+/* Un mismo texto puede verse distinto en la selección y en el DOM:
+   `text-transform` devuelve el texto ya transformado (MAYÚSCULAS) y la
+   selección colapsa los espacios que el DOM sí tiene (saltos de línea,
+   sangrías). Normalizamos ambos lados para poder compararlos: minúsculas,
+   espacios colapsados. `mapa` guarda, para cada carácter normalizado, su
+   posición original, para poder volver al DOM. */
+function normalizar(cadena){
+  let norm = "";
+  const mapa = [];
+  let espacio = true;                     // true: descarta espacios iniciales
+  for(let i = 0; i < cadena.length; i++){
+    const c = cadena[i];
+    if(/\s/.test(c)){
+      if(espacio) continue;
+      espacio = true;
+      norm += " "; mapa.push(i);
+      continue;
+    }
+    espacio = false;
+    const b = c.toLowerCase();
+    norm += (b.length === 1 ? b : c);     // conserva el mapeo 1:1
+    mapa.push(i);
+  }
+  while(norm.endsWith(" ")){ norm = norm.slice(0, -1); mapa.pop(); }
+  return { norm, mapa };
+}
+
+function igualTexto(a, b){
+  return normalizar(String(a)).norm === normalizar(String(b)).norm;
+}
+
 /* envuelve la primera aparición de un texto dentro de un contenedor */
 function pintarResaltado(cont, txt){
   const w = document.createTreeWalker(cont, NodeFilter.SHOW_TEXT);
@@ -3637,9 +3668,16 @@ function pintarResaltado(cont, txt){
     if(n.parentElement.closest("mark.hl")) continue;
     nodos.push(n); partes.push(todo.length); todo += n.nodeValue;
   }
-  const i = todo.indexOf(txt);
-  if(i < 0) return false;
-  const fin = i + txt.length;
+  let i = todo.indexOf(txt), fin = i + txt.length;
+  if(i < 0){
+    /* sin coincidencia literal: buscamos sobre el texto normalizado */
+    const t = normalizar(todo), b = normalizar(txt);
+    if(!b.norm) return false;
+    const j = t.norm.indexOf(b.norm);
+    if(j < 0) return false;
+    i   = t.mapa[j];
+    fin = t.mapa[j + b.norm.length - 1] + 1;
+  }
   let ni = -1, nf = -1;
   for(let k=0; k<nodos.length; k++){
     const ini = partes[k], term = ini + nodos[k].nodeValue.length;
@@ -3757,8 +3795,8 @@ app.addEventListener("click", ev=>{
   const k = claveVista();
   let quitados = [];
   if(HL[k]){
-    quitados = HL[k].filter(x => x.texto.trim() === txt);
-    HL[k] = HL[k].filter(x => x.texto.trim() !== txt);
+    quitados = HL[k].filter(x => igualTexto(x.texto, txt));
+    HL[k] = HL[k].filter(x => !igualTexto(x.texto, txt));
     if(!HL[k].length) delete HL[k];
     guardarHL();
   }
